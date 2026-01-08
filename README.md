@@ -4,27 +4,17 @@ A high-performance, **monolithic blogging platform** built in Rust featuring a u
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                      Rusty BBS                              │
-│                   (Single Rust Binary)                      │
-│                                                             │
-│  ┌──────────────────┐         ┌──────────────────┐        │
-│  │   Web Interface  │         │  SSH Interface   │        │
-│  │   (Axum HTTP)    │         │  (Russh Server)  │        │
-│  │  Port 3000       │         │  Port 2222       │        │
-│  └────────┬─────────┘         └────────┬─────────┘        │
-│           │                            │                   │
-│           └────────────┬───────────────┘                   │
-│                        │                                   │
-│                ┌───────▼────────┐                          │
-│                │   Shared DB    │                          │
-│                │  (PostgreSQL)  │                          │
-│                │  Connection    │                          │
-│                │     Pool       │                          │
-│                └────────────────┘                          │
-│                    (Arc<PgPool>)                           │
-└─────────────────────────────────────────────────────────────┘
+```mermaid
+graph TD
+    subgraph Binary [Rusty BBS - Single Rust Binary]
+        direction TB
+        Web[Web Interface<br>Axum HTTP<br>Port 3000]
+        SSH[SSH Interface<br>Russh Server<br>Port 2222]
+        Pool[Shared DB Connection Pool<br>Arc PgPool]
+    end
+
+    Web --> Pool
+    SSH --> Pool
 ```
 
 ## Features
@@ -72,12 +62,12 @@ GET  /health            - Health check
 
 | Component | Technology |
 |-----------|------------|
-| Language | Rust 1.75+ |
+| Language | Rust |
 | Async Runtime | Tokio |
-| Web Framework | Axum 0.7 |
-| SSH Server | Russh 0.56 |
+| Web Framework | Axum |
+| SSH Server | Russh |
 | Templates | Askama |
-| Database | PostgreSQL 16 |
+| Database | PostgreSQL |
 | ORM | SQLx (compile-time checked) |
 | Styling | Tailwind CSS |
 | Containerization | Docker Compose |
@@ -332,9 +322,9 @@ For production use, implement:
 - **Accessibility**: Terminal access for SSH-only environments
 - **Uniqueness**: Novel approach to blogging platforms
 
-### Why Russh 0.56?
-- Version 0.44 had trait lifetime issues
-- 0.56 uses simpler `&mut self` signatures
+### Why Russh?
+- Overcame trait lifetime issues present in older versions
+- Uses simpler `&mut self` signatures
 - Better maintained and more stable
 
 ## Known Limitations
