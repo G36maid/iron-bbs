@@ -34,11 +34,8 @@ impl io::Write for TerminalHandle {
 
     fn flush(&mut self) -> io::Result<()> {
         let result = self.sender.send(self.sink.clone());
-        if result.is_err() {
-            return Err(io::Error::new(
-                io::ErrorKind::BrokenPipe,
-                result.unwrap_err(),
-            ));
+        if let Err(e) = result {
+            return Err(io::Error::new(io::ErrorKind::BrokenPipe, e));
         }
         self.sink.clear();
         Ok(())

@@ -43,12 +43,7 @@ impl Server {
         )
         .fetch_all(&self.db)
         .await
-        .map_err(|e| {
-            russh::Error::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        .map_err(|e| russh::Error::from(std::io::Error::other(e.to_string())))?;
 
         let mut apps = self.apps.lock().await;
         if let Some(app) = apps.get_mut(&client_id) {
@@ -65,7 +60,7 @@ impl Server {
         if let (Some(terminal), Some(app)) = (clients.get_mut(&client_id), apps.get(&client_id)) {
             terminal
                 .draw(|f| ui::render(f, app))
-                .map_err(|e| russh::Error::from(e))?;
+                .map_err(russh::Error::from)?;
         }
 
         Ok(())
@@ -133,10 +128,7 @@ impl server::Handler for Server {
         .await
         .map_err(|e| {
             tracing::error!("Database error checking SSH key: {}", e);
-            russh::Error::from(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
+            russh::Error::from(std::io::Error::other(e.to_string()))
         })?;
 
         if authorized.is_some() {
