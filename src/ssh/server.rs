@@ -53,6 +53,32 @@ impl Server {
         Ok(())
     }
 
+    async fn verify_login(&self, username: &str, password: &str) -> Result<bool, russh::Error> {
+        use crate::auth::AuthService;
+        use crate::models::User;
+
+        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE username = $1")
+            .bind(username)
+            .fetch_optional(&self.db)
+            .await
+            .map_err(|e| {
+                tracing::error!("Database error during login: {}", e);
+                russh::Error::from(std::io::Error::other(e.to_string()))
+            })?;
+
+        match user {
+            Some(user) => {
+                let valid =
+                    AuthService::verify_password(password, &user.password_hash).map_err(|e| {
+                        tracing::error!("Password verification error: {}", e);
+                        russh::Error::from(std::io::Error::other(e.to_string()))
+                    })?;
+                Ok(valid)
+            }
+            None => Ok(false),
+        }
+    }
+
     async fn render_client(&self, client_id: usize) -> Result<(), russh::Error> {
         let mut clients = self.clients.lock().await;
         let apps = self.apps.lock().await;
@@ -113,8 +139,22 @@ impl server::Handler for Server {
     ) -> Result<server::Auth, Self::Error> {
         use crate::models::AuthorizedKey;
 
+        // Extract just the base64-encoded key data (without algorithm prefix or comment)
         let key_str = key.to_string();
+        let key_parts: Vec<&str> = key_str.split_whitespace().collect();
+        let key_data = if key_parts.len() >= 2 {
+            key_parts[1] // The base64 part
+        } else {
+            &key_str // Fallback to full string if format is unexpected
+        };
         let key_type = key.algorithm().to_string();
+
+        tracing::debug!(
+            "Auth attempt: user={}, key_type={}, key_preview={}...",
+            user,
+            key_type,
+            &key_data[..key_data.len().min(50)]
+        );
 
         let authorized = sqlx::query_as::<_, AuthorizedKey>(
             "SELECT ak.* FROM authorized_keys ak
@@ -122,7 +162,7 @@ impl server::Handler for Server {
              WHERE u.username = $1 AND ak.public_key = $2 AND ak.key_type = $3",
         )
         .bind(user)
-        .bind(&key_str)
+        .bind(key_data)
         .bind(&key_type)
         .fetch_optional(&self.db)
         .await
@@ -133,11 +173,32 @@ impl server::Handler for Server {
 
         if authorized.is_some() {
             tracing::info!("SSH authentication successful for user: {}", user);
+
+            let mut apps = self.apps.lock().await;
+            if let Some(app) = apps.get_mut(&self.id) {
+                app.transition_to_browsing();
+            }
+
             Ok(server::Auth::Accept)
         } else {
             tracing::warn!("SSH authentication failed for user: {}", user);
             Ok(server::Auth::Reject {
                 proceed_with_methods: None,
+                partial_success: false,
+            })
+        }
+    }
+
+    async fn auth_none(&mut self, user: &str) -> Result<server::Auth, Self::Error> {
+        tracing::debug!("Auth none attempt for user: {}", user);
+
+        if user == "bbs" {
+            tracing::info!("Guest login accepted for user: bbs");
+            Ok(server::Auth::Accept)
+        } else {
+            tracing::debug!("Auth none rejected for user: {}", user);
+            Ok(server::Auth::Reject {
+                proceed_with_methods: Some(MethodSet::from(&[MethodKind::PublicKey][..])),
                 partial_success: false,
             })
         }
@@ -170,7 +231,16 @@ impl server::Handler for Server {
 
         drop(clients);
 
-        self.refresh_posts(self.id).await?;
+        let apps = self.apps.lock().await;
+        let is_browsing = apps
+            .get(&self.id)
+            .map(|app| matches!(app.state, ui::AppState::Browsing))
+            .unwrap_or(false);
+        drop(apps);
+
+        if is_browsing {
+            self.refresh_posts(self.id).await?;
+        }
         self.render_client(self.id).await?;
 
         Ok(())
@@ -209,6 +279,91 @@ impl server::Handler for Server {
         data: &[u8],
         session: &mut Session,
     ) -> Result<(), Self::Error> {
+        let apps = self.apps.lock().await;
+        let app_state = apps.get(&self.id).map(|app| app.state.clone());
+        drop(apps);
+
+        match app_state {
+            Some(ui::AppState::Login) => {
+                self.handle_login_input(data).await?;
+                self.render_client(self.id).await?;
+            }
+            Some(ui::AppState::Browsing) => {
+                self.handle_browsing_input(channel, data, session).await?;
+            }
+            None => {}
+        }
+
+        Ok(())
+    }
+
+    async fn shell_request(
+        &mut self,
+        _channel: ChannelId,
+        _session: &mut Session,
+    ) -> Result<(), Self::Error> {
+        Ok(())
+    }
+}
+
+impl Server {
+    async fn handle_login_input(&mut self, data: &[u8]) -> Result<(), russh::Error> {
+        let mut apps = self.apps.lock().await;
+        let app = match apps.get_mut(&self.id) {
+            Some(app) => app,
+            None => return Ok(()),
+        };
+
+        match data {
+            b"\r" | b"\n" => match app.login_step {
+                ui::LoginStep::Username => {
+                    if !app.input_buffer.is_empty() {
+                        app.temp_username = Some(app.input_buffer.clone());
+                        app.login_step = ui::LoginStep::Password;
+                        app.clear_input();
+                    }
+                }
+                ui::LoginStep::Password => {
+                    let username = app.temp_username.clone().unwrap_or_default();
+                    let password = app.input_buffer.clone();
+
+                    drop(apps);
+
+                    let valid = self.verify_login(&username, &password).await?;
+
+                    let mut apps = self.apps.lock().await;
+                    if let Some(app) = apps.get_mut(&self.id) {
+                        if valid {
+                            tracing::info!("Login successful for user: {}", username);
+                            app.transition_to_browsing();
+                            drop(apps);
+                            self.refresh_posts(self.id).await?;
+                        } else {
+                            tracing::warn!("Login failed for user: {}", username);
+                            app.reset_login(Some("Invalid username or password".to_string()));
+                        }
+                    }
+                }
+            },
+            &[127] | b"\x08" => {
+                app.backspace();
+            }
+            _ => {
+                if data.len() == 1 && data[0].is_ascii_graphic() || data[0] == b' ' {
+                    app.add_char(data[0] as char);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    async fn handle_browsing_input(
+        &mut self,
+        channel: ChannelId,
+        data: &[u8],
+        session: &mut Session,
+    ) -> Result<(), russh::Error> {
         match data {
             b"q" | &[3] => {
                 self.clients.lock().await.remove(&self.id);
@@ -262,14 +417,6 @@ impl server::Handler for Server {
 
         Ok(())
     }
-
-    async fn shell_request(
-        &mut self,
-        _channel: ChannelId,
-        _session: &mut Session,
-    ) -> Result<(), Self::Error> {
-        Ok(())
-    }
 }
 
 impl Drop for Server {
@@ -294,6 +441,7 @@ pub async fn run_ssh_server(addr: String, db: PgPool) -> crate::Result<()> {
                 |e| crate::Error::Internal(format!("Failed to generate SSH key: {}", e)),
             )?,
         ],
+        methods: MethodSet::from(&[MethodKind::PublicKey, MethodKind::None][..]),
         ..Default::default()
     };
 

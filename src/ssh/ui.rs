@@ -7,7 +7,24 @@ use ratatui::{
     Frame,
 };
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum AppState {
+    Login,
+    Browsing,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum LoginStep {
+    Username,
+    Password,
+}
+
 pub struct App {
+    pub state: AppState,
+    pub login_step: LoginStep,
+    pub input_buffer: String,
+    pub temp_username: Option<String>,
+    pub login_error: Option<String>,
     pub posts: Vec<Post>,
     pub selected: usize,
 }
@@ -15,9 +32,40 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         Self {
+            state: AppState::Login,
+            login_step: LoginStep::Username,
+            input_buffer: String::new(),
+            temp_username: None,
+            login_error: None,
             posts: Vec::new(),
             selected: 0,
         }
+    }
+
+    pub fn add_char(&mut self, c: char) {
+        self.input_buffer.push(c);
+    }
+
+    pub fn backspace(&mut self) {
+        self.input_buffer.pop();
+    }
+
+    pub fn clear_input(&mut self) {
+        self.input_buffer.clear();
+    }
+
+    pub fn transition_to_browsing(&mut self) {
+        self.state = AppState::Browsing;
+        self.input_buffer.clear();
+        self.temp_username = None;
+        self.login_error = None;
+    }
+
+    pub fn reset_login(&mut self, error: Option<String>) {
+        self.login_step = LoginStep::Username;
+        self.input_buffer.clear();
+        self.temp_username = None;
+        self.login_error = error;
     }
 
     pub fn set_posts(&mut self, posts: Vec<Post>) {
@@ -51,6 +99,83 @@ impl App {
 pub fn render(f: &mut Frame, app: &App) {
     let area = f.size();
 
+    match app.state {
+        AppState::Login => render_login(f, app, area),
+        AppState::Browsing => render_browsing(f, app, area),
+    }
+}
+
+fn render_login(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Min(0),
+        ])
+        .margin(2)
+        .split(area);
+
+    let title = Paragraph::new("Welcome to Iron BBS")
+        .block(Block::default().borders(Borders::ALL))
+        .style(
+            Style::default()
+                .fg(Color::Cyan)
+                .add_modifier(Modifier::BOLD),
+        );
+    f.render_widget(title, chunks[0]);
+
+    let (username_text, username_style) = match app.login_step {
+        LoginStep::Username => {
+            let text = if app.input_buffer.is_empty() {
+                "Username: _".to_string()
+            } else {
+                format!("Username: {}_", app.input_buffer)
+            };
+            (text, Style::default().fg(Color::Yellow))
+        }
+        LoginStep::Password => {
+            let username = app.temp_username.as_deref().unwrap_or("");
+            (
+                format!("Username: {}", username),
+                Style::default().fg(Color::Gray),
+            )
+        }
+    };
+
+    let username_input = Paragraph::new(username_text)
+        .block(Block::default().borders(Borders::ALL))
+        .style(username_style);
+    f.render_widget(username_input, chunks[1]);
+
+    let (password_text, password_style) = match app.login_step {
+        LoginStep::Username => ("Password: ".to_string(), Style::default().fg(Color::Gray)),
+        LoginStep::Password => {
+            let masked = "*".repeat(app.input_buffer.len());
+            let text = if app.input_buffer.is_empty() {
+                "Password: _".to_string()
+            } else {
+                format!("Password: {}_", masked)
+            };
+            (text, Style::default().fg(Color::Yellow))
+        }
+    };
+
+    let password_input = Paragraph::new(password_text)
+        .block(Block::default().borders(Borders::ALL))
+        .style(password_style);
+    f.render_widget(password_input, chunks[2]);
+
+    if let Some(error) = &app.login_error {
+        let error_msg = Paragraph::new(error.as_str())
+            .style(Style::default().fg(Color::Red))
+            .block(Block::default().borders(Borders::ALL));
+        f.render_widget(error_msg, chunks[3]);
+    }
+}
+
+fn render_browsing(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
     if app.posts.is_empty() {
         let paragraph = Paragraph::new("No posts available.\nPress 'q' to quit.")
             .block(Block::default().borders(Borders::ALL).title("Iron BBS"))

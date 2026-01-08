@@ -1,6 +1,8 @@
+-- Seed data for Iron BBS
+-- Admin user: username=admin, password=admin123
 INSERT INTO users (id, username, email, password_hash)
 VALUES 
-    ('550e8400-e29b-41d4-a716-446655440000'::uuid, 'admin', 'admin@example.com', '$argon2id$v=19$m=19456,t=2,p=1$VE0rM09wSHNsWmVPejJnaw$iOyQaJQp7nXzZqK/0dHGKIUEqZIk8nzHZ3GQwNcMTbU');
+    ('550e8400-e29b-41d4-a716-446655440000'::uuid, 'admin', 'admin@example.com', '$argon2id$v=19$m=19456,t=2,p=1$Ff5anEJlW0FiS+CcFhmVgQ$2mnNMGaiG+FFrMsSVkaV6Y7OFU0AaIYRbkerL1c9xyI');
 
 INSERT INTO posts (title, content, author_id, published)
 VALUES

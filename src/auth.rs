@@ -46,4 +46,12 @@ mod tests {
         assert!(AuthService::verify_password(password, &hash).unwrap());
         assert!(!AuthService::verify_password("wrong_password", &hash).unwrap());
     }
+
+    #[test]
+    #[ignore]
+    fn generate_admin_hash() {
+        let password = "admin123";
+        let hash = AuthService::hash_password(password).unwrap();
+        println!("\n\nPassword: {}\nHash: {}\n\n", password, hash);
+    }
 }
