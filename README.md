@@ -1,5 +1,7 @@
 # Rusty BBS
 
+[![CI](https://github.com/YOUR_USERNAME/rusty-bbs/workflows/CI/badge.svg)](https://github.com/YOUR_USERNAME/rusty-bbs/actions)
+
 A high-performance, **monolithic blogging platform** built in Rust featuring a unique **dual-interface architecture** that serves identical content via both **HTTP/HTTPS** (modern web browser) and **SSH** (terminal interface).
 
 ## Architecture
@@ -250,14 +252,41 @@ cargo build --release
 ```
 
 ### Run Tests
+
+**Unit Tests:**
 ```bash
 cargo test
 ```
+
+**Integration Tests:**
+```bash
+# Ensure PostgreSQL is running
+docker-compose up -d
+
+# Run the test suite
+chmod +x test.sh
+./test.sh
+```
+
+The integration test script will:
+- Start PostgreSQL container
+- Build the release binary
+- Start the application
+- Run 8 comprehensive tests:
+  - Health endpoint check
+  - API posts retrieval
+  - Web homepage rendering
+  - SSH server connectivity
+  - SSH authentication (rejection test)
+  - Post creation via API
+  - Post verification
+  - Application log validation
 
 ### Check Code
 ```bash
 cargo check
 cargo clippy
+cargo fmt
 ```
 
 ### Database Migrations
