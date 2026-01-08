@@ -84,9 +84,11 @@ pub async fn index(State(state): State<Arc<AppState>>, cookies: Cookies) -> Resu
         r#"
         SELECT 
             p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,
+            p.board_id, b.name as board_name, b.slug as board_slug,
             u.username as author_username, u.email as author_email
         FROM posts p
         JOIN users u ON p.author_id = u.id
+        LEFT JOIN boards b ON p.board_id = b.id
         WHERE p.published = true
         ORDER BY p.created_at DESC
         LIMIT 10
@@ -118,9 +120,11 @@ pub async fn get_post(
         r#"
         SELECT 
             p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,
+            p.board_id, b.name as board_name, b.slug as board_slug,
             u.username as author_username, u.email as author_email
         FROM posts p
         JOIN users u ON p.author_id = u.id
+        LEFT JOIN boards b ON p.board_id = b.id
         WHERE p.id = $1 AND p.published = true
         "#,
         id

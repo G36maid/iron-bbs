@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT \n            p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,\n            u.username as author_username, u.email as author_email\n        FROM posts p\n        JOIN users u ON p.author_id = u.id\n        WHERE p.id = $1 AND p.published = true\n        ",
+  "query": "\n        SELECT \n            p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,\n            p.board_id, b.name as board_name, b.slug as board_slug,\n            u.username as author_username, u.email as author_email\n        FROM posts p\n        JOIN users u ON p.author_id = u.id\n        LEFT JOIN boards b ON p.board_id = b.id\n        WHERE p.published = true\n        ORDER BY p.created_at DESC\n        LIMIT 10\n        ",
   "describe": {
     "columns": [
       {
@@ -40,19 +40,32 @@
       },
       {
         "ordinal": 7,
+        "name": "board_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 8,
+        "name": "board_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "board_slug",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
         "name": "author_username",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 8,
+        "ordinal": 11,
         "name": "author_email",
         "type_info": "Varchar"
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -62,9 +75,12 @@
       false,
       false,
       false,
+      true,
+      false,
+      false,
       false,
       false
     ]
   },
-  "hash": "086bf6a0313ab2ab6699b79913cbcdb2e30bbf6889ed170ce8ea51c248b0633e"
+  "hash": "162bfba5a7071f20a064025fa85009b3df57b76306383401943730c2c925ba52"
 }

@@ -38,8 +38,14 @@
                         {{ post.title }}
                     </a>
                 </h3>
-                <div class="text-gray-600 text-sm mb-3">
-                    Posted by <span class="font-medium">{{ post.author_username }}</span> on {{ post.created_at.format("%B %d, %Y at %H:%M") }}
+                <div class="text-gray-600 text-sm mb-3 flex items-center gap-3">
+                    <span>Posted by <span class="font-medium">{{ post.author_username }}</span></span>
+                    {% if post.board_name.is_some() %}
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                        📁 {{ post.board_name.as_ref().unwrap() }}
+                    </span>
+                    {% endif %}
+                    <span>{{ post.created_at.format("%B %d, %Y at %H:%M") }}</span>
                 </div>
                 <p class="text-gray-700 mb-4">{{ post.preview(200) }}</p>
                 <a href="/posts/{{ post.id }}" class="text-blue-500 hover:underline inline-flex items-center">

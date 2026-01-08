@@ -32,6 +32,7 @@ pub struct Post {
     pub title: String,
     pub content: String,
     pub author_id: Uuid,
+    pub board_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub published: bool,
@@ -56,6 +57,9 @@ pub struct PostWithAuthor {
     pub author_id: Uuid,
     pub author_username: String,
     pub author_email: String,
+    pub board_id: Option<Uuid>,
+    pub board_name: Option<String>,
+    pub board_slug: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
     pub published: bool,
@@ -81,6 +85,16 @@ impl PostWithAuthor {
             email_hash, size
         )
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct Board {
+    pub id: Uuid,
+    pub name: String,
+    pub slug: String,
+    pub description: Option<String>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

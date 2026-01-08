@@ -20,6 +20,13 @@
         <article class="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
             <header class="mb-6 border-b border-gray-200 pb-6">
                 <h1 class="text-4xl font-bold mb-4 text-gray-900">{{ post.title }}</h1>
+                {% if post.board_name.is_some() %}
+                <div class="mb-4">
+                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 text-indigo-800">
+                        📁 {{ post.board_name.as_ref().unwrap() }}
+                    </span>
+                </div>
+                {% endif %}
                 <div class="flex items-center space-x-4 mb-4">
                     <img src="{{ author_gravatar }}" alt="{{ post.author_username }}" class="w-16 h-16 rounded-full">
                     <div>
