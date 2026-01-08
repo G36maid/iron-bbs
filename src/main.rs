@@ -1,4 +1,4 @@
-use rusty_bbs::{Config, Result};
+use iron_bbs::{Config, Result};
 use tokio::signal;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -35,28 +35,28 @@ async fn main() -> Result<()> {
     tracing_subscriber::registry()
         .with(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "rusty_bbs=debug,tower_http=debug".into()),
+                .unwrap_or_else(|_| "iron_bbs=debug,tower_http=debug".into()),
         )
         .with(tracing_subscriber::fmt::layer())
         .init();
 
     let config = Config::from_env()?;
 
-    tracing::info!("Starting rusty-bbs");
+    tracing::info!("Starting iron-bbs");
     tracing::info!("Web server will listen on: {}", config.web_addr());
     tracing::info!("SSH server will listen on: {}", config.ssh_addr());
 
-    let db_pool = rusty_bbs::db::create_pool(&config.database_url).await?;
+    let db_pool = iron_bbs::db::create_pool(&config.database_url).await?;
 
     sqlx::migrate!("./migrations")
         .run(&db_pool)
         .await
         .expect("Failed to run migrations");
 
-    let app_state = rusty_bbs::web::AppState::new(db_pool.clone());
+    let app_state = iron_bbs::web::AppState::new(db_pool.clone());
 
-    let web_handle = tokio::spawn(rusty_bbs::web::serve(config.web_addr(), app_state));
-    let ssh_handle = tokio::spawn(rusty_bbs::ssh::serve(config.ssh_addr(), db_pool.clone()));
+    let web_handle = tokio::spawn(iron_bbs::web::serve(config.web_addr(), app_state));
+    let ssh_handle = tokio::spawn(iron_bbs::ssh::serve(config.ssh_addr(), db_pool.clone()));
 
     tokio::select! {
         result = web_handle => {

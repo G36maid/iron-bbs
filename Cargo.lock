@@ -1657,6 +1657,38 @@ dependencies = [
 ]
 
 [[package]]
+name = "iron-bbs"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "argon2",
+ "askama",
+ "askama_axum",
+ "async-trait",
+ "axum",
+ "chrono",
+ "config",
+ "crossterm",
+ "dotenvy",
+ "rand 0.8.5",
+ "rand_core 0.6.4",
+ "ratatui",
+ "russh",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "ssh-key",
+ "thiserror",
+ "tokio",
+ "tokio-test",
+ "tower 0.4.13",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
 name = "itertools"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2743,38 +2775,6 @@ name = "rustversion"
 version = "1.0.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b39cdef0fa800fc44525c84ccb54a029961a8215f9619753635a9c0d2538d46d"
-
-[[package]]
-name = "rusty-bbs"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "argon2",
- "askama",
- "askama_axum",
- "async-trait",
- "axum",
- "chrono",
- "config",
- "crossterm",
- "dotenvy",
- "rand 0.8.5",
- "rand_core 0.6.4",
- "ratatui",
- "russh",
- "serde",
- "serde_json",
- "sqlx",
- "ssh-key",
- "thiserror",
- "tokio",
- "tokio-test",
- "tower 0.4.13",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
 
 [[package]]
 name = "ryu"

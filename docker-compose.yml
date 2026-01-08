@@ -4,15 +4,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_DB: rusty_bbs
-      POSTGRES_USER: rusty_bbs
-      POSTGRES_PASSWORD: rusty_bbs
+      POSTGRES_DB: iron_bbs
+      POSTGRES_USER: iron_bbs
+      POSTGRES_PASSWORD: iron_bbs
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/ var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U rusty_bbs"]
+      test: ["CMD-SHELL", "pg_isready -U iron_bbs"]
       interval: 5s
       timeout: 5s
       retries: 5

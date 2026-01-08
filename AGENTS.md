@@ -1,4 +1,4 @@
-# Rusty BBS - Agent Development Guide
+# Iron BBS - Agent Development Guide
 
 ## Build Commands
 

@@ -21,7 +21,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: rustybbs
+          POSTGRES_DB: ironbbs
         ports:
           - 5432:5432
         options: >-
@@ -65,7 +65,7 @@ jobs:
 
       - name: Run tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rustybbs
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ironbbs
           RUST_LOG: info
         run: cargo test
 
@@ -108,7 +108,7 @@ jobs:
             --health-retries 5 \
             -e POSTGRES_USER=postgres \
             -e POSTGRES_PASSWORD=postgres \
-            -e POSTGRES_DB=rustybbs \
+            -e POSTGRES_DB=ironbbs \
             -p 5432:5432 \
             postgres:16-alpine
 
@@ -121,7 +121,7 @@ jobs:
 
       - name: Run integration tests
         env:
-          DATABASE_URL: postgres://postgres:postgres@localhost:5432/rustybbs
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/ironbbs
           WEB_ADDRESS: 0.0.0.0:3000
           SSH_ADDRESS: 0.0.0.0:2222
           RUST_LOG: info
@@ -134,7 +134,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-logs
-          path: /tmp/rusty-bbs-test.log
+          path: /tmp/iron-bbs-test.log
 
   lint:
     name: Lint
@@ -201,5 +201,5 @@ jobs:
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
-          name: rusty-bbs-${{ matrix.target }}
-          path: target/${{ matrix.target }}/release/rusty-bbs
+          name: iron-bbs-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/iron-bbs

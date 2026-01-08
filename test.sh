@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🧪 Running rusty-bbs integration tests..."
+echo "🧪 Running iron-bbs integration tests..."
 
 # Start PostgreSQL
 echo "📦 Starting PostgreSQL..."
@@ -17,8 +17,8 @@ echo "🔨 Building application..."
 cargo build --release
 
 # Start the application in background
-echo "🚀 Starting rusty-bbs..."
-RUST_LOG=info ./target/release/rusty-bbs >/tmp/rusty-bbs-test.log 2>&1 &
+echo "🚀 Starting iron-bbs..."
+RUST_LOG=info ./target/release/iron-bbs >/tmp/iron-bbs-test.log 2>&1 &
 APP_PID=$!
 sleep 3
 
@@ -98,11 +98,11 @@ fi
 
 # Test 8: Check logs for errors
 echo "✅ Test 8: Check application logs"
-if grep -i "panic\|fatal" /tmp/rusty-bbs-test.log; then
+if grep -i "panic\|fatal" /tmp/iron-bbs-test.log; then
 	echo "❌ Found critical errors in logs"
 	exit 1
 fi
 
 echo ""
 echo "✅ All tests passed!"
-echo "🎉 rusty-bbs is working correctly"
+echo "🎉 iron-bbs is working correctly"

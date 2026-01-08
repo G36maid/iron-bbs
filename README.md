@@ -1,6 +1,6 @@
-# Rusty BBS
+# Iron BBS
 
-[![CI](https://github.com/YOUR_USERNAME/rusty-bbs/workflows/CI/badge.svg)](https://github.com/YOUR_USERNAME/rusty-bbs/actions)
+[![CI](https://github.com/G36_maid/iron-bbs/workflows/CI/badge.svg)](https://github.com/G36_maid/iron-bbs/actions)
 
 A high-performance, **monolithic blogging platform** built in Rust featuring a unique **dual-interface architecture** that serves identical content via both **HTTP/HTTPS** (modern web browser) and **SSH** (terminal interface).
 
@@ -8,7 +8,7 @@ A high-performance, **monolithic blogging platform** built in Rust featuring a u
 
 ```mermaid
 graph TD
-    subgraph Binary [Rusty BBS - Single Rust Binary]
+    subgraph Binary [Iron BBS - Single Rust Binary]
         direction TB
         Web[Web Interface<br>Axum HTTP<br>Port 3000]
         SSH[SSH Interface<br>Russh Server<br>Port 2222]
@@ -77,7 +77,7 @@ GET  /health            - Health check
 ## Project Structure
 
 ```
-rusty-bbs/
+iron-bbs/
 ├── Cargo.toml              # Dependencies and project config
 ├── docker-compose.yml      # PostgreSQL container
 ├── .env.example            # Environment variable template
@@ -120,7 +120,7 @@ rusty-bbs/
 
 ```bash
 git clone <repository-url>
-cd rusty-bbs
+cd iron-bbs
 cp .env.example .env
 ```
 
@@ -172,7 +172,7 @@ ssh -p 2222 localhost
 Example session:
 ```
 ╔════════════════════════════════════════════╗
-║   Welcome to Rusty BBS (SSH Interface)  ║
+║   Welcome to Iron BBS (SSH Interface)  ║
 ╚════════════════════════════════════════════╝
 
 Commands:
@@ -187,13 +187,13 @@ Commands:
 ║                          RECENT POSTS                                ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
-1. Welcome to Rusty BBS
+1. Welcome to Iron BBS
    ID: f2f49db6-9891-4c05-9d89-6ff293e09f34
    This is a high-performance blogging platform...
 
 > view f2f49db6-9891-4c05-9d89-6ff293e09f34
 ╔══════════════════════════════════════════════════════════════════════╗
-║ Welcome to Rusty BBS                                                 ║
+║ Welcome to Iron BBS                                                 ║
 ╚══════════════════════════════════════════════════════════════════════╝
 
 ID: f2f49db6-9891-4c05-9d89-6ff293e09f34
@@ -212,7 +212,7 @@ Goodbye!
 Environment variables (`.env` file):
 
 ```env
-DATABASE_URL=postgres://postgres:postgres@localhost:5432/rustybbs
+DATABASE_URL=postgres://postgres:postgres@localhost:5432/ironbbs
 WEB_ADDRESS=0.0.0.0:3000
 SSH_ADDRESS=0.0.0.0:2222
 RUST_LOG=info
@@ -310,8 +310,8 @@ sqlx migrate revert
 
 ### Docker Build (Optional)
 ```bash
-docker build -t rusty-bbs .
-docker run -p 3000:3000 -p 2222:2222 rusty-bbs
+docker build -t iron-bbs .
+docker run -p 3000:3000 -p 2222:2222 iron-bbs
 ```
 
 ### Production Considerations

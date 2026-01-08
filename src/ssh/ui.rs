@@ -53,7 +53,7 @@ pub fn render(f: &mut Frame, app: &App) {
 
     if app.posts.is_empty() {
         let paragraph = Paragraph::new("No posts available.\nPress 'q' to quit.")
-            .block(Block::default().borders(Borders::ALL).title("Rusty BBS"))
+            .block(Block::default().borders(Borders::ALL).title("Iron BBS"))
             .style(Style::default().fg(Color::Gray));
         f.render_widget(paragraph, area);
         return;
@@ -99,7 +99,7 @@ pub fn render(f: &mut Frame, app: &App) {
         .block(
             Block::default()
                 .borders(Borders::ALL)
-                .title("Rusty BBS - Posts (Interactive TUI)"),
+                .title("Iron BBS - Posts (Interactive TUI)"),
         )
         .highlight_style(
             Style::default()
