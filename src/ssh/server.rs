@@ -66,20 +66,34 @@ impl server::Handler for Server {
             return Ok(());
         }
 
-        let response = match input.as_str() {
-            "list" => match self.list_posts().await {
-                Ok(posts) => posts,
-                Err(e) => {
-                    tracing::error!("Failed to list posts: {}", e);
-                    "Error listing posts\r\n".to_string()
-                }
-            },
-            "help" => "Available commands:\r\n  list - List recent posts\r\n  help - Show this help\r\n  quit - Exit\r\n\r\n".to_string(),
-            "" => {
-                let _ = session.data(channel, CryptoVec::from("> ".to_string()));
-                return Ok(());
+        let response = if input.starts_with("view ") {
+            let id_str = input.trim_start_matches("view ").trim();
+            match self.view_post(id_str).await {
+                Ok(content) => content,
+                Err(e) => format!("Error: {}\r\n\r\n", e),
             }
-            _ => format!("Unknown command: '{}'\r\nType 'help' for available commands.\r\n\r\n", input),
+        } else if input.starts_with("delete ") {
+            let id_str = input.trim_start_matches("delete ").trim();
+            match self.delete_post(id_str).await {
+                Ok(msg) => msg,
+                Err(e) => format!("Error: {}\r\n\r\n", e),
+            }
+        } else {
+            match input.as_str() {
+                "list" => match self.list_posts().await {
+                    Ok(posts) => posts,
+                    Err(e) => {
+                        tracing::error!("Failed to list posts: {}", e);
+                        "Error listing posts\r\n".to_string()
+                    }
+                },
+                "help" => "Available commands:\r\n  list - List recent posts\r\n  view <id> - View post details\r\n  delete <id> - Delete a post\r\n  help - Show this help\r\n  quit - Exit\r\n\r\n".to_string(),
+                "" => {
+                    let _ = session.data(channel, CryptoVec::from("> ".to_string()));
+                    return Ok(());
+                }
+                _ => format!("Unknown command: '{}'\r\nType 'help' for available commands.\r\n\r\n", input),
+            }
         };
 
         let _ = session.data(channel, CryptoVec::from(response));
@@ -138,6 +152,49 @@ impl Server {
         }
 
         Ok(output)
+    }
+
+    async fn view_post(&self, id_str: &str) -> Result<String, String> {
+        use crate::models::Post;
+
+        let id = uuid::Uuid::parse_str(id_str)
+            .map_err(|_| "Invalid UUID format".to_string())?;
+
+        let post = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE id = $1")
+            .bind(id)
+            .fetch_optional(&self.db)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?
+            .ok_or_else(|| "Post not found".to_string())?;
+
+        let mut output = String::from("╔══════════════════════════════════════════════════════════════════════╗\r\n");
+        output.push_str(&format!("║ {:<68} ║\r\n", post.title));
+        output.push_str("╚══════════════════════════════════════════════════════════════════════╝\r\n\r\n");
+        output.push_str(&format!("ID: {}\r\n", post.id));
+        output.push_str(&format!("Author: {}\r\n", post.author_id));
+        output.push_str(&format!("Published: {}\r\n", if post.published { "Yes" } else { "No" }));
+        output.push_str(&format!("Created: {}\r\n\r\n", post.created_at.format("%Y-%m-%d %H:%M:%S")));
+        output.push_str(&post.content);
+        output.push_str("\r\n\r\n");
+
+        Ok(output)
+    }
+
+    async fn delete_post(&self, id_str: &str) -> Result<String, String> {
+        let id = uuid::Uuid::parse_str(id_str)
+            .map_err(|_| "Invalid UUID format".to_string())?;
+
+        let result = sqlx::query("DELETE FROM posts WHERE id = $1")
+            .bind(id)
+            .execute(&self.db)
+            .await
+            .map_err(|e| format!("Database error: {}", e))?;
+
+        if result.rows_affected() == 0 {
+            return Err("Post not found".to_string());
+        }
+
+        Ok(format!("Post {} deleted successfully.\r\n\r\n", id))
     }
 }
 

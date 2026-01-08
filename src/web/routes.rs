@@ -1,5 +1,5 @@
 use axum::{
-    routing::get,
+    routing::{delete, get, post, put},
     Router,
 };
 use std::sync::Arc;
@@ -10,6 +10,7 @@ pub fn create_routes() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", get(handlers::index))
         .route("/posts/:id", get(handlers::get_post))
-        .route("/api/posts", get(handlers::api_list_posts))
+        .route("/api/posts", get(handlers::api_list_posts).post(handlers::create_post))
+        .route("/api/posts/:id", put(handlers::update_post).delete(handlers::delete_post))
         .route("/health", get(handlers::health))
 }
