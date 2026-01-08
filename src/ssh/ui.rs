@@ -10,6 +10,7 @@ use ratatui::{
 #[derive(Debug, Clone, PartialEq)]
 pub enum AppState {
     Login,
+    SecurityAlert,
     Browsing,
 }
 
@@ -25,6 +26,7 @@ pub struct App {
     pub input_buffer: String,
     pub temp_username: Option<String>,
     pub login_error: Option<String>,
+    pub alert_info: Option<(String, String)>,
     pub posts: Vec<Post>,
     pub selected: usize,
 }
@@ -37,6 +39,7 @@ impl App {
             input_buffer: String::new(),
             temp_username: None,
             login_error: None,
+            alert_info: None,
             posts: Vec::new(),
             selected: 0,
         }
@@ -66,6 +69,14 @@ impl App {
         self.input_buffer.clear();
         self.temp_username = None;
         self.login_error = error;
+    }
+
+    pub fn show_security_alert(&mut self, old_ip: String, new_ip: String) {
+        self.state = AppState::SecurityAlert;
+        self.alert_info = Some((old_ip, new_ip));
+        self.input_buffer.clear();
+        self.temp_username = None;
+        self.login_error = None;
     }
 
     pub fn set_posts(&mut self, posts: Vec<Post>) {
@@ -101,6 +112,7 @@ pub fn render(f: &mut Frame, app: &App) {
 
     match app.state {
         AppState::Login => render_login(f, app, area),
+        AppState::SecurityAlert => render_security_alert(f, app, area),
         AppState::Browsing => render_browsing(f, app, area),
     }
 }
@@ -173,6 +185,66 @@ fn render_login(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
             .block(Block::default().borders(Borders::ALL));
         f.render_widget(error_msg, chunks[3]);
     }
+}
+
+fn render_security_alert(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {
+    let default_ips = ("Unknown".to_string(), "Unknown".to_string());
+    let (old_ip, new_ip) = app.alert_info.as_ref().unwrap_or(&default_ips);
+
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(Color::Red))
+        .title(" SECURITY ALERT ");
+
+    let chunks = Layout::default()
+        .direction(Direction::Vertical)
+        .margin(2)
+        .constraints([
+            Constraint::Length(1),
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Length(3),
+            Constraint::Min(0),
+        ])
+        .split(area);
+
+    let _inner = block.inner(chunks[0]);
+    f.render_widget(block, area);
+
+    let title_text = vec![Line::from(vec![Span::styled(
+        "⚠️  SECURITY ALERT  ⚠️",
+        Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+    )])];
+    let title = Paragraph::new(title_text).alignment(ratatui::layout::Alignment::Center);
+    f.render_widget(title, chunks[0]);
+
+    let message = Paragraph::new("Login detected from a different IP address!")
+        .style(Style::default().fg(Color::Yellow))
+        .alignment(ratatui::layout::Alignment::Center);
+    f.render_widget(message, chunks[1]);
+
+    let prev_ip_text = vec![Line::from(vec![
+        Span::styled("Previous IP: ", Style::default().fg(Color::Gray)),
+        Span::styled(old_ip, Style::default().fg(Color::Yellow)),
+    ])];
+    let prev_ip = Paragraph::new(prev_ip_text)
+        .block(Block::default().borders(Borders::ALL))
+        .alignment(ratatui::layout::Alignment::Left);
+    f.render_widget(prev_ip, chunks[2]);
+
+    let curr_ip_text = vec![Line::from(vec![
+        Span::styled("Current IP:  ", Style::default().fg(Color::Gray)),
+        Span::styled(new_ip, Style::default().fg(Color::Green)),
+    ])];
+    let curr_ip = Paragraph::new(curr_ip_text)
+        .block(Block::default().borders(Borders::ALL))
+        .alignment(ratatui::layout::Alignment::Left);
+    f.render_widget(curr_ip, chunks[3]);
+
+    let instruction = Paragraph::new("Press [Enter] to acknowledge and continue")
+        .style(Style::default().fg(Color::Cyan))
+        .alignment(ratatui::layout::Alignment::Center);
+    f.render_widget(instruction, chunks[4]);
 }
 
 fn render_browsing(f: &mut Frame, app: &App, area: ratatui::layout::Rect) {

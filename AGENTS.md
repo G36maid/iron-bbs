@@ -92,6 +92,7 @@ pub enum Error {
 - Use `sqlx::query_as::<_, Model>()` for dynamic queries
 - Bind parameters with `.bind()` - NEVER interpolate strings
 - All queries must be type-safe at compile time
+- **IMPORTANT**: After modifying queries, regenerate offline metadata for Docker builds
 
 ```rust
 let post = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE id = $1")
@@ -101,11 +102,47 @@ let post = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE id = $1")
     .ok_or(Error::NotFound)?;
 ```
 
+**SQLx Offline Mode (Required for Docker Builds):**
+```bash
+# Install sqlx-cli if not already installed
+cargo install sqlx-cli --no-default-features --features postgres
+
+# Set DATABASE_URL
+export DATABASE_URL="postgresql://iron_bbs:iron_bbs@localhost:5432/iron_bbs"
+
+# Ensure database is running
+docker-compose up -d postgres
+
+# Generate offline query metadata
+cargo sqlx prepare
+
+# This creates/updates the .sqlx/ directory
+# MUST commit this directory to git for Docker builds to work
+git add .sqlx/
+git commit -m "Update sqlx offline query metadata"
+```
+
 ### Web (Axum)
 - Handlers accept `State<Arc<AppState>>` for shared state
 - Return `Result<Json<T>>` for JSON responses
 - Return `Result<Response>` for HTML/custom responses
-- Use Axum extractors: `Path`, `State`, `Json`, `Query`
+- Use Axum extractors: `Path`, `State`, `Json`, `Query`, `Form`, `Cookies`
+- Protected routes should check authentication via `check_auth()` helper
+- Use `Redirect::to()` for navigation after form submissions
+
+**Authentication Pattern:**
+```rust
+pub async fn protected_route(
+    cookies: Cookies,
+    State(state): State<Arc<AppState>>,
+) -> Result<Response> {
+    let user = check_auth(&cookies, &state.db).await;
+    if user.is_none() {
+        return Ok(Redirect::to("/login").into_response());
+    }
+    // Handle authenticated request
+}
+```
 
 ### SSH (Russh)
 - Implement `server::Server` and `server::Handler` traits

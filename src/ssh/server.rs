@@ -22,6 +22,7 @@ struct Server {
     db: PgPool,
     clients: Arc<Mutex<HashMap<usize, SshTerminal>>>,
     apps: Arc<Mutex<HashMap<usize, ui::App>>>,
+    peer_addr: Option<std::net::SocketAddr>,
     id: usize,
 }
 
@@ -31,6 +32,7 @@ impl Server {
             db,
             clients: Arc::new(Mutex::new(HashMap::new())),
             apps: Arc::new(Mutex::new(HashMap::new())),
+            peer_addr: None,
             id: 0,
         }
     }
@@ -96,8 +98,9 @@ impl Server {
 impl server::Server for Server {
     type Handler = Self;
 
-    fn new_client(&mut self, _peer_addr: Option<std::net::SocketAddr>) -> Self {
+    fn new_client(&mut self, peer_addr: Option<std::net::SocketAddr>) -> Self {
         let mut s = self.clone();
+        s.peer_addr = peer_addr;
         s.id = self.id + 1;
         self.id += 1;
         s
@@ -288,6 +291,10 @@ impl server::Handler for Server {
                 self.handle_login_input(data).await?;
                 self.render_client(self.id).await?;
             }
+            Some(ui::AppState::SecurityAlert) => {
+                self.handle_alert_input(data).await?;
+                self.render_client(self.id).await?;
+            }
             Some(ui::AppState::Browsing) => {
                 self.handle_browsing_input(channel, data, session).await?;
             }
@@ -335,9 +342,50 @@ impl Server {
                     if let Some(app) = apps.get_mut(&self.id) {
                         if valid {
                             tracing::info!("Login successful for user: {}", username);
-                            app.transition_to_browsing();
+
+                            let current_ip = self
+                                .peer_addr
+                                .map(|addr| addr.ip().to_string())
+                                .unwrap_or_else(|| "unknown".to_string());
+
                             drop(apps);
-                            self.refresh_posts(self.id).await?;
+
+                            let user = sqlx::query_as::<_, crate::models::User>(
+                                "SELECT * FROM users WHERE username = $1",
+                            )
+                            .bind(&username)
+                            .fetch_one(&self.db)
+                            .await
+                            .map_err(|e| {
+                                russh::Error::from(std::io::Error::other(e.to_string()))
+                            })?;
+
+                            let show_alert = match &user.last_login_ip {
+                                Some(old_ip) if old_ip != &current_ip => true,
+                                _ => false,
+                            };
+
+                            sqlx::query(
+                                "UPDATE users SET last_login_ip = $1, last_login_at = NOW() WHERE username = $2",
+                            )
+                            .bind(&current_ip)
+                            .bind(&username)
+                            .execute(&self.db)
+                            .await
+                            .map_err(|e| russh::Error::from(std::io::Error::other(e.to_string())))?;
+
+                            let mut apps = self.apps.lock().await;
+                            if let Some(app) = apps.get_mut(&self.id) {
+                                if show_alert {
+                                    let old_ip =
+                                        user.last_login_ip.unwrap_or_else(|| "unknown".to_string());
+                                    app.show_security_alert(old_ip, current_ip);
+                                } else {
+                                    app.transition_to_browsing();
+                                    drop(apps);
+                                    self.refresh_posts(self.id).await?;
+                                }
+                            }
                         } else {
                             tracing::warn!("Login failed for user: {}", username);
                             app.reset_login(Some("Invalid username or password".to_string()));
@@ -355,6 +403,21 @@ impl Server {
             }
         }
 
+        Ok(())
+    }
+
+    async fn handle_alert_input(&mut self, data: &[u8]) -> Result<(), russh::Error> {
+        match data {
+            b"\r" | b"\n" => {
+                let mut apps = self.apps.lock().await;
+                if let Some(app) = apps.get_mut(&self.id) {
+                    app.transition_to_browsing();
+                }
+                drop(apps);
+                self.refresh_posts(self.id).await?;
+            }
+            _ => {}
+        }
         Ok(())
     }
 
