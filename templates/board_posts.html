@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ board.name }} - Iron BBS{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <div class="mb-4">
+        <a href="/boards" class="text-blue-600 hover:text-blue-800 inline-flex items-center text-sm">
+            ← Back to all boards
+        </a>
+    </div>
+    <h2 class="text-3xl font-semibold mb-2">📁 {{ board.name }}</h2>
+    {% if board.description.is_some() %}
+    <p class="text-gray-700">{{ board.description.as_ref().unwrap() }}</p>
+    {% endif %}
+</div>
+
+<h3 class="text-2xl font-bold mb-6">Posts in {{ board.name }}</h3>
+
+{% if posts.is_empty() %}
+<div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+    <p class="text-yellow-800">No posts in this board yet.</p>
+</div>
+{% else %}
+<div class="space-y-4">
+    {% for post in posts %}
+    <article class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+        <div class="flex items-start space-x-4">
+            <img src="{{ post.author_gravatar(48) }}" alt="{{ post.author_username }}" class="w-12 h-12 rounded-full">
+            <div class="flex-1">
+                <h3 class="text-xl font-semibold mb-2">
+                    <a href="/posts/{{ post.id }}" class="text-blue-600 hover:text-blue-800">
+                        {{ post.title }}
+                    </a>
+                </h3>
+                <div class="text-gray-600 text-sm mb-3">
+                    Posted by <span class="font-medium">{{ post.author_username }}</span> on {{ post.created_at.format("%B %d, %Y at %H:%M") }}
+                </div>
+                <p class="text-gray-700 mb-4">{{ post.preview(200) }}</p>
+                <a href="/posts/{{ post.id }}" class="text-blue-500 hover:underline inline-flex items-center">
+                    Read more →
+                </a>
+            </div>
+        </div>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

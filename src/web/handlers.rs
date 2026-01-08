@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthService,
-    models::{Post, PostWithAuthor, User},
+    models::{Board, Post, PostWithAuthor, User},
     Error, Result,
 };
 
@@ -536,4 +536,82 @@ pub async fn delete_post(
     }
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Template)]
+#[template(path = "boards.html")]
+struct BoardsTemplate {
+    boards: Vec<Board>,
+    current_user: Option<String>,
+}
+
+#[derive(Template)]
+#[template(path = "board_posts.html")]
+struct BoardPostsTemplate {
+    board: Board,
+    posts: Vec<PostWithAuthor>,
+    current_user: Option<String>,
+}
+
+pub async fn list_boards(State(state): State<Arc<AppState>>, cookies: Cookies) -> Result<Response> {
+    let boards = sqlx::query_as::<_, Board>("SELECT * FROM boards ORDER BY name ASC")
+        .fetch_all(&state.db)
+        .await?;
+
+    let current_user = check_auth(&cookies, &state.db).await.map(|u| u.username);
+
+    let template = BoardsTemplate {
+        boards,
+        current_user,
+    };
+    Ok(Html(
+        template
+            .render()
+            .map_err(|e| Error::Internal(format!("Template error: {}", e)))?,
+    )
+    .into_response())
+}
+
+pub async fn get_board_posts(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+    cookies: Cookies,
+) -> Result<Response> {
+    let board = sqlx::query_as::<_, Board>("SELECT * FROM boards WHERE slug = $1")
+        .bind(&slug)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or(Error::NotFound)?;
+
+    let posts = sqlx::query_as!(
+        PostWithAuthor,
+        r#"
+        SELECT 
+            p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,
+            p.board_id, b.name as board_name, b.slug as board_slug,
+            u.username as author_username, u.email as author_email
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        LEFT JOIN boards b ON p.board_id = b.id
+        WHERE p.board_id = $1 AND p.published = true
+        ORDER BY p.created_at DESC
+        "#,
+        board.id
+    )
+    .fetch_all(&state.db)
+    .await?;
+
+    let current_user = check_auth(&cookies, &state.db).await.map(|u| u.username);
+
+    let template = BoardPostsTemplate {
+        board,
+        posts,
+        current_user,
+    };
+    Ok(Html(
+        template
+            .render()
+            .map_err(|e| Error::Internal(format!("Template error: {}", e)))?,
+    )
+    .into_response())
 }

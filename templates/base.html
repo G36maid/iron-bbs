@@ -16,7 +16,10 @@
                     </h1>
                     <p class="text-blue-100 mt-1">High-performance blogging platform built with Rust</p>
                 </div>
-                <nav class="flex space-x-4">
+                <nav class="flex space-x-4 items-center">
+                    <a href="/boards" class="text-white hover:text-blue-100 font-semibold">
+                        📁 Boards
+                    </a>
                     {% match current_user %}
                     {% when Some with (username) %}
                     <a href="/new" class="bg-white text-blue-600 px-4 py-2 rounded hover:bg-blue-50 font-semibold">

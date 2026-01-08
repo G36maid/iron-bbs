@@ -24,6 +24,8 @@ pub fn create_routes() -> Router<Arc<AppState>> {
             get(handlers::create_post_form).post(handlers::create_post_submit),
         )
         .route("/posts/:id", get(handlers::get_post))
+        .route("/boards", get(handlers::list_boards))
+        .route("/boards/:slug", get(handlers::get_board_posts))
         .route(
             "/api/posts",
             get(handlers::api_list_posts).post(handlers::create_post),

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Boards - Iron BBS{% endblock %}
+
+{% block content %}
+<div class="bg-white rounded-lg shadow-md p-6 mb-8">
+    <h2 class="text-3xl font-semibold mb-4">Discussion Boards</h2>
+    <p class="text-gray-700">
+        Browse posts by category
+    </p>
+</div>
+
+{% if boards.is_empty() %}
+<div class="bg-yellow-50 border-l-4 border-yellow-500 p-4">
+    <p class="text-yellow-800">No boards available yet.</p>
+</div>
+{% else %}
+<div class="space-y-4">
+    {% for board in boards %}
+    <article class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
+        <h3 class="text-2xl font-semibold mb-2">
+            <a href="/boards/{{ board.slug }}" class="text-blue-600 hover:text-blue-800">
+                📁 {{ board.name }}
+            </a>
+        </h3>
+        {% if board.description.is_some() %}
+        <p class="text-gray-600 mb-3">{{ board.description.as_ref().unwrap() }}</p>
+        {% endif %}
+        <a href="/boards/{{ board.slug }}" class="text-blue-500 hover:underline inline-flex items-center">
+            View posts →
+        </a>
+    </article>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
