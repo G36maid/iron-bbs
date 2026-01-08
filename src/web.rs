@@ -1,5 +1,5 @@
-pub mod handlers;
-pub mod routes;
+mod handlers;
+mod routes;
 
 use axum::Router;
 use sqlx::PgPool;

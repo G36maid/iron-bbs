@@ -13,8 +13,7 @@ impl Config {
         dotenvy::dotenv().ok();
 
         Ok(Self {
-            database_url: env::var("DATABASE_URL")
-                .expect("DATABASE_URL must be set"),
+            database_url: env::var("DATABASE_URL").expect("DATABASE_URL must be set"),
             web_port: env::var("WEB_PORT")
                 .unwrap_or_else(|_| "3000".to_string())
                 .parse()

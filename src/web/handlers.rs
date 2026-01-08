@@ -33,9 +33,12 @@ pub async fn index(State(state): State<Arc<AppState>>) -> Result<Response> {
     .await?;
 
     let template = IndexTemplate { posts };
-    Ok(Html(template.render().map_err(|e| {
-        Error::Internal(format!("Template error: {}", e))
-    })?).into_response())
+    Ok(Html(
+        template
+            .render()
+            .map_err(|e| Error::Internal(format!("Template error: {}", e)))?,
+    )
+    .into_response())
 }
 
 pub async fn get_post(
@@ -49,9 +52,12 @@ pub async fn get_post(
         .ok_or(Error::NotFound)?;
 
     let template = PostTemplate { post };
-    Ok(Html(template.render().map_err(|e| {
-        Error::Internal(format!("Template error: {}", e))
-    })?).into_response())
+    Ok(Html(
+        template
+            .render()
+            .map_err(|e| Error::Internal(format!("Template error: {}", e)))?,
+    )
+    .into_response())
 }
 
 pub async fn api_list_posts(State(state): State<Arc<AppState>>) -> Result<Json<Vec<Post>>> {
@@ -137,9 +143,7 @@ pub async fn update_post(
 
     q = q.bind(id);
 
-    let post = q.fetch_optional(&state.db)
-        .await?
-        .ok_or(Error::NotFound)?;
+    let post = q.fetch_optional(&state.db).await?.ok_or(Error::NotFound)?;
 
     Ok(Json(post))
 }

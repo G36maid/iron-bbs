@@ -1,4 +1,6 @@
-pub mod server;
+mod server;
+mod terminal;
+mod ui;
 
 use sqlx::PgPool;
 
