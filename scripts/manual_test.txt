@@ -1,0 +1,101 @@
+=======================================================================
+IRON BBS - PTT-STYLE LOGIN - MANUAL TEST VERIFICATION
+=======================================================================
+
+## Quick Test
+
+Run this command in your terminal:
+
+    ssh -p 2222 bbs@localhost
+
+Expected behavior:
+1. You'll see "Iron BBS - Login" screen
+2. Prompt: "Username: "
+3. Type: admin
+4. Press Enter
+5. Prompt changes to: "Password: "
+6. Type: admin123 (won't show on screen)
+7. Press Enter
+8. Should see post browsing interface with 3 posts
+9. Press 'q' to quit
+
+## What You Should See
+
+### Login Screen:
+```
+╔══════════════════════════════════════════════╗
+║           Welcome to Iron BBS                 ║
+║              PTT-Style Login                  ║
+╚══════════════════════════════════════════════╝
+
+Username: _
+```
+
+### After Entering Username:
+```
+Username: admin
+
+Password: _
+```
+
+### After Successful Login:
+```
+╔══════════════════════════════════════════════╗
+║                   POSTS                       ║
+╚══════════════════════════════════════════════╝
+
+> Welcome to Iron BBS
+  Getting Started with Rust
+  Async Rust with Tokio
+
+Press 'j' or 'k' to navigate, 'q' to quit
+```
+
+## Troubleshooting
+
+**Connection Refused**:
+- Check server is running: `pgrep -f iron-bbs`
+- Check port 2222: `ss -tlnp | grep 2222`
+- Restart: `pkill iron-bbs && cargo run`
+
+**Login Screen Not Showing**:
+- Check logs: `RUST_LOG=debug cargo run`
+- Verify TUI rendering in your terminal
+
+**Invalid Credentials Error**:
+- Make sure you're using: username="admin", password="admin123"
+- Check database has correct seed data
+
+**Stuck After Login**:
+- Press 'q' to quit
+- Check if posts loaded successfully
+
+## Test Credentials
+
+Username: admin
+Password: admin123
+
+## Architecture
+
+```
+SSH Client (bbs@localhost) 
+    ↓
+[auth_none() accepts "bbs"]
+    ↓
+[App created in Login state]
+    ↓
+[render_login() displays login screen]
+    ↓
+[User enters credentials]
+    ↓
+[handle_login_input() processes]
+    ↓
+[verify_login() checks database]
+    ↓
+[transition_to_browsing() on success]
+    ↓
+[refresh_posts() loads data]
+    ↓
+[render_browsing() shows post list]
+```
+
