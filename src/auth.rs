@@ -1,7 +1,10 @@
 use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::SaltString;
 use argon2::{Argon2, PasswordHash, PasswordHasher, PasswordVerifier};
+use sqlx::PgPool;
 use uuid::Uuid;
+
+use crate::models::User;
 
 pub struct AuthService;
 
@@ -31,6 +34,32 @@ impl AuthService {
 
     pub fn generate_session_token() -> String {
         Uuid::new_v4().to_string()
+    }
+
+    pub async fn authenticate_user(
+        db: &PgPool,
+        username: &str,
+        password: &str,
+    ) -> crate::Result<Option<User>> {
+        let user = sqlx::query_as!(
+            User,
+            "SELECT id, username, email, password_hash, created_at, last_login_ip, last_login_at FROM users WHERE username = $1",
+            username
+        )
+        .fetch_optional(db)
+        .await?;
+
+        match user {
+            Some(user) => {
+                let valid = Self::verify_password(password, &user.password_hash)?;
+                if valid {
+                    Ok(Some(user))
+                } else {
+                    Ok(None)
+                }
+            }
+            None => Ok(None),
+        }
     }
 }
 

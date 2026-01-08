@@ -30,18 +30,23 @@
 <div class="space-y-4">
     {% for post in posts %}
     <article class="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6">
-        <h3 class="text-xl font-semibold mb-2">
-            <a href="/posts/{{ post.id }}" class="text-blue-600 hover:text-blue-800">
-                {{ post.title }}
-            </a>
-        </h3>
-        <div class="text-gray-600 text-sm mb-3">
-            Posted on {{ post.created_at.format("%B %d, %Y at %H:%M") }}
+        <div class="flex items-start space-x-4">
+            <img src="{{ post.author_gravatar(48) }}" alt="{{ post.author_username }}" class="w-12 h-12 rounded-full">
+            <div class="flex-1">
+                <h3 class="text-xl font-semibold mb-2">
+                    <a href="/posts/{{ post.id }}" class="text-blue-600 hover:text-blue-800">
+                        {{ post.title }}
+                    </a>
+                </h3>
+                <div class="text-gray-600 text-sm mb-3">
+                    Posted by <span class="font-medium">{{ post.author_username }}</span> on {{ post.created_at.format("%B %d, %Y at %H:%M") }}
+                </div>
+                <p class="text-gray-700 mb-4">{{ post.preview(200) }}</p>
+                <a href="/posts/{{ post.id }}" class="text-blue-500 hover:underline inline-flex items-center">
+                    Read more →
+                </a>
+            </div>
         </div>
-        <p class="text-gray-700 mb-4">{{ post.preview(200) }}</p>
-        <a href="/posts/{{ post.id }}" class="text-blue-500 hover:underline inline-flex items-center">
-            Read more →
-        </a>
     </article>
     {% endfor %}
 </div>

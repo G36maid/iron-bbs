@@ -13,7 +13,7 @@ use uuid::Uuid;
 
 use crate::{
     auth::AuthService,
-    models::{Post, User},
+    models::{Post, PostWithAuthor, User},
     Error, Result,
 };
 
@@ -46,14 +46,15 @@ async fn check_auth(cookies: &Cookies, db: &sqlx::PgPool) -> Option<User> {
 #[derive(Template)]
 #[template(path = "index.html")]
 struct IndexTemplate {
-    posts: Vec<Post>,
+    posts: Vec<PostWithAuthor>,
     current_user: Option<String>,
 }
 
 #[derive(Template)]
 #[template(path = "post.html")]
 struct PostTemplate {
-    post: Post,
+    post: PostWithAuthor,
+    author_gravatar: String,
 }
 
 #[derive(Template)]
@@ -78,8 +79,18 @@ struct CreatePostTemplate {
 }
 
 pub async fn index(State(state): State<Arc<AppState>>, cookies: Cookies) -> Result<Response> {
-    let posts = sqlx::query_as::<_, Post>(
-        "SELECT * FROM posts WHERE published = true ORDER BY created_at DESC LIMIT 10",
+    let posts = sqlx::query_as!(
+        PostWithAuthor,
+        r#"
+        SELECT 
+            p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,
+            u.username as author_username, u.email as author_email
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.published = true
+        ORDER BY p.created_at DESC
+        LIMIT 10
+        "#
     )
     .fetch_all(&state.db)
     .await?;
@@ -102,13 +113,28 @@ pub async fn get_post(
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<Response> {
-    let post = sqlx::query_as::<_, Post>("SELECT * FROM posts WHERE id = $1 AND published = true")
-        .bind(id)
-        .fetch_optional(&state.db)
-        .await?
-        .ok_or(Error::NotFound)?;
+    let post = sqlx::query_as!(
+        PostWithAuthor,
+        r#"
+        SELECT 
+            p.id, p.title, p.content, p.author_id, p.created_at, p.updated_at, p.published,
+            u.username as author_username, u.email as author_email
+        FROM posts p
+        JOIN users u ON p.author_id = u.id
+        WHERE p.id = $1 AND p.published = true
+        "#,
+        id
+    )
+    .fetch_optional(&state.db)
+    .await?
+    .ok_or(Error::NotFound)?;
 
-    let template = PostTemplate { post };
+    let author_gravatar = post.author_gravatar(64);
+
+    let template = PostTemplate {
+        post,
+        author_gravatar,
+    };
     Ok(Html(
         template
             .render()
@@ -137,13 +163,8 @@ pub async fn login_submit(
     cookies: Cookies,
     Form(payload): Form<AuthPayload>,
 ) -> Result<Response> {
-    let user = sqlx::query_as!(
-        User,
-        "SELECT id, username, email, password_hash, created_at, last_login_ip, last_login_at FROM users WHERE username = $1",
-        payload.username
-    )
-    .fetch_optional(&state.db)
-    .await?;
+    let user =
+        AuthService::authenticate_user(&state.db, &payload.username, &payload.password).await?;
 
     let user = match user {
         Some(u) => u,
@@ -160,21 +181,6 @@ pub async fn login_submit(
             .into_response());
         }
     };
-
-    let valid = AuthService::verify_password(&payload.password, &user.password_hash)?;
-
-    if !valid {
-        let template = LoginTemplate {
-            error: Some("Invalid username or password".to_string()),
-            current_user: None,
-        };
-        return Ok(Html(
-            template
-                .render()
-                .map_err(|e| Error::Internal(format!("Template error: {}", e)))?,
-        )
-        .into_response());
-    }
 
     let token = AuthService::generate_session_token();
     let expires_at = Utc::now() + Duration::days(7);
@@ -417,9 +423,18 @@ pub struct UpdatePostRequest {
 }
 
 pub async fn create_post(
+    cookies: Cookies,
     State(state): State<Arc<AppState>>,
     Json(payload): Json<CreatePostRequest>,
 ) -> Result<(StatusCode, Json<Post>)> {
+    let user = check_auth(&cookies, &state.db)
+        .await
+        .ok_or(Error::Unauthorized)?;
+
+    if user.id != payload.author_id {
+        return Err(Error::Unauthorized);
+    }
+
     let post = sqlx::query_as::<_, Post>(
         "INSERT INTO posts (title, content, author_id, published) VALUES ($1, $2, $3, $4) RETURNING *"
     )
@@ -434,10 +449,24 @@ pub async fn create_post(
 }
 
 pub async fn update_post(
+    cookies: Cookies,
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
     Json(payload): Json<UpdatePostRequest>,
 ) -> Result<Json<Post>> {
+    let user = check_auth(&cookies, &state.db)
+        .await
+        .ok_or(Error::Unauthorized)?;
+
+    let existing_post = sqlx::query!("SELECT author_id FROM posts WHERE id = $1", id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or(Error::NotFound)?;
+
+    if user.id != existing_post.author_id {
+        return Err(Error::Unauthorized);
+    }
+
     let mut query = String::from("UPDATE posts SET updated_at = NOW()");
     let mut bind_count = 1;
 
@@ -476,9 +505,23 @@ pub async fn update_post(
 }
 
 pub async fn delete_post(
+    cookies: Cookies,
     State(state): State<Arc<AppState>>,
     Path(id): Path<Uuid>,
 ) -> Result<StatusCode> {
+    let user = check_auth(&cookies, &state.db)
+        .await
+        .ok_or(Error::Unauthorized)?;
+
+    let existing_post = sqlx::query!("SELECT author_id FROM posts WHERE id = $1", id)
+        .fetch_optional(&state.db)
+        .await?
+        .ok_or(Error::NotFound)?;
+
+    if user.id != existing_post.author_id {
+        return Err(Error::Unauthorized);
+    }
+
     let result = sqlx::query("DELETE FROM posts WHERE id = $1")
         .bind(id)
         .execute(&state.db)

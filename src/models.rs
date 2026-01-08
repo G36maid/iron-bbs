@@ -13,6 +13,19 @@ pub struct User {
     pub last_login_at: Option<DateTime<Utc>>,
 }
 
+impl User {
+    pub fn gravatar_url(&self, size: u32) -> String {
+        let email_hash = format!(
+            "{:x}",
+            md5::compute(self.email.trim().to_lowercase().as_bytes())
+        );
+        format!(
+            "https://www.gravatar.com/avatar/{}?s={}&d=identicon",
+            email_hash, size
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct Post {
     pub id: Uuid,
@@ -26,11 +39,47 @@ pub struct Post {
 
 impl Post {
     pub fn preview(&self, length: usize) -> String {
-        if self.content.len() <= length {
-            self.content.clone()
+        let chars: String = self.content.chars().take(length).collect();
+        if self.content.chars().count() > length {
+            format!("{}...", chars)
         } else {
-            format!("{}...", &self.content[..length])
+            chars
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PostWithAuthor {
+    pub id: Uuid,
+    pub title: String,
+    pub content: String,
+    pub author_id: Uuid,
+    pub author_username: String,
+    pub author_email: String,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub published: bool,
+}
+
+impl PostWithAuthor {
+    pub fn preview(&self, length: usize) -> String {
+        let chars: String = self.content.chars().take(length).collect();
+        if self.content.chars().count() > length {
+            format!("{}...", chars)
+        } else {
+            chars
+        }
+    }
+
+    pub fn author_gravatar(&self, size: u32) -> String {
+        let email_hash = format!(
+            "{:x}",
+            md5::compute(self.author_email.trim().to_lowercase().as_bytes())
+        );
+        format!(
+            "https://www.gravatar.com/avatar/{}?s={}&d=identicon",
+            email_hash, size
+        )
     }
 }
 

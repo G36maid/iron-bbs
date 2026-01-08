@@ -20,12 +20,18 @@
         <article class="bg-white rounded-lg shadow-lg p-8 max-w-4xl mx-auto">
             <header class="mb-6 border-b border-gray-200 pb-6">
                 <h1 class="text-4xl font-bold mb-4 text-gray-900">{{ post.title }}</h1>
-                <div class="flex items-center text-gray-600 text-sm space-x-4">
-                    <span>📅 {{ post.created_at.format("%B %d, %Y") }}</span>
-                    <span>🕐 {{ post.created_at.format("%H:%M") }}</span>
-                    {% if post.updated_at != post.created_at %}
-                    <span class="text-gray-500">(Updated: {{ post.updated_at.format("%B %d, %Y") }})</span>
-                    {% endif %}
+                <div class="flex items-center space-x-4 mb-4">
+                    <img src="{{ author_gravatar }}" alt="{{ post.author_username }}" class="w-16 h-16 rounded-full">
+                    <div>
+                        <div class="font-semibold text-gray-900">{{ post.author_username }}</div>
+                        <div class="flex items-center text-gray-600 text-sm space-x-4">
+                            <span>📅 {{ post.created_at.format("%B %d, %Y") }}</span>
+                            <span>🕐 {{ post.created_at.format("%H:%M") }}</span>
+                        </div>
+                        {% if post.updated_at != post.created_at %}
+                        <div class="text-gray-500 text-xs mt-1">(Updated: {{ post.updated_at.format("%B %d, %Y") }})</div>
+                        {% endif %}
+                    </div>
                 </div>
             </header>
 

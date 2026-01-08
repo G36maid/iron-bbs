@@ -57,28 +57,15 @@ impl Server {
 
     async fn verify_login(&self, username: &str, password: &str) -> Result<bool, russh::Error> {
         use crate::auth::AuthService;
-        use crate::models::User;
 
-        let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE username = $1")
-            .bind(username)
-            .fetch_optional(&self.db)
+        let user = AuthService::authenticate_user(&self.db, username, password)
             .await
             .map_err(|e| {
-                tracing::error!("Database error during login: {}", e);
+                tracing::error!("Authentication error: {}", e);
                 russh::Error::from(std::io::Error::other(e.to_string()))
             })?;
 
-        match user {
-            Some(user) => {
-                let valid =
-                    AuthService::verify_password(password, &user.password_hash).map_err(|e| {
-                        tracing::error!("Password verification error: {}", e);
-                        russh::Error::from(std::io::Error::other(e.to_string()))
-                    })?;
-                Ok(valid)
-            }
-            None => Ok(false),
-        }
+        Ok(user.is_some())
     }
 
     async fn render_client(&self, client_id: usize) -> Result<(), russh::Error> {

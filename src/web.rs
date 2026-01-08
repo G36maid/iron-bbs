@@ -1,6 +1,9 @@
 mod handlers;
 mod routes;
 
+#[cfg(test)]
+mod tests;
+
 use axum::Router;
 use serde::Deserialize;
 use sqlx::PgPool;
